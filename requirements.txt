@@ -1,6 +1,9 @@
-flask
+Flask
 flask-cors
 python-dotenv
+PyPDF2
+python-docx
+python-pptx
 google-generativeai
-PyMuPDF
 supabase
+PyMuPDF

@@ -8,6 +8,9 @@ from werkzeug.utils import secure_filename
 from supabase import create_client
 from PyPDF2 import PdfReader
 import google.generativeai as genai
+import fitz
+import docx2txt
+import pptx
 
 # === Load Environment Variables ===
 load_dotenv()
@@ -17,7 +20,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 # === Configure Gemini Model ===
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-pro")
+model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
 # === Initialize Supabase ===
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -28,15 +31,43 @@ CORS(app)
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 # === Helper Functions ===
+def extract_text_from_pdf(file_path):
+    doc = fitz.open(file_path)
+    text = "".join([page.get_text() for page in doc])
+    doc.close()
+    return text
+
+def extract_text_from_docx(file_path):
+    return docx2txt.process(file_path)
+
+def extract_text_from_pptx(file_path):
+    prs = pptx.Presentation(file_path)
+    text = ""
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                text += shape.text + "\n"
+    return text
+
+def extract_text(file_path):
+    if file_path.endswith(".pdf"):
+        return extract_text_from_pdf(file_path)
+    elif file_path.endswith(".docx"):
+        return extract_text_from_docx(file_path)
+    elif file_path.endswith(".pptx"):
+        return extract_text_from_pptx(file_path)
+    return ""
+
 def extract_text_from_supabase_paths(file_paths):
     all_text = ""
     for path in file_paths:
-        pdf_bytes = supabase.storage.from_("materials").download(path)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(pdf_bytes)
+        ext = os.path.splitext(path)[1].lower()
+        file_bytes = supabase.storage.from_("materials").download(path)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(file_bytes)
             tmp.flush()
-            reader = PdfReader(tmp.name)
-            all_text += "\n".join([page.extract_text() or "" for page in reader.pages])
+            extracted = extract_text(tmp.name)
+            all_text += extracted + "\n"
     return re.sub(r'\s+', ' ', all_text).strip()
 
 def generate_ai_response(task, text, count=5):
@@ -65,7 +96,7 @@ def generate_ai_response(task, text, count=5):
     else:
         return None
 
-    response = model.generate_content(prompt)
+    response = model.generate_content([prompt])
     return response.text
 
 # === Routes ===
