@@ -3,6 +3,8 @@ flask-cors
 python-dotenv
 PyPDF2
 python-docx
+docx2txt
+ModuleNotFoundError: No module named 'docx2txt'
 python-pptx
 google-generativeai
 supabase
