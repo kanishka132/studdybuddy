@@ -70,12 +70,12 @@ def extract_text_from_supabase_paths(file_paths):
             all_text += extracted + "\n"
     return re.sub(r'\s+', ' ', all_text).strip()
 
-def generate_ai_response(task, text, count=5):
+def generate_ai_response(task, text, count=5, difficulty="medium"):
     if task == "summarize":
         prompt = f"Please summarize the following content clearly and concisely:\n{text}"
     elif task == "quiz":
         prompt = f"""
-        Create {count} multiple-choice questions based on the text below.
+        Create {count} {difficulty}-level multiple-choice questions based on the text below.
         Each should have 4 options (A, B, C, D) with one correct answer. Return JSON array:
         [
           {{
@@ -107,6 +107,8 @@ def generate_learning_content():
         file_paths = data.get("file_paths", [])
         actions = data.get("actions", [])
         project_name = data.get("project_name", "Untitled Project")
+	question_count = int(data.get("question_count", 5))
+        difficulty = data.get("difficulty", "medium")
 
         text = extract_text_from_supabase_paths(file_paths)
 
@@ -114,7 +116,7 @@ def generate_learning_content():
         if "summarize" in actions:
             results["summary"] = generate_ai_response("summarize", text)
         if "quiz" in actions:
-            results["quiz"] = generate_ai_response("quiz", text)
+            results["quiz"] = generate_ai_response("quiz", text, count=question_count, difficulty=difficulty)
         if "flashcards" in actions:
             results["flashcards"] = generate_ai_response("flashcards", text)
 
