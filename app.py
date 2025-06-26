@@ -107,7 +107,7 @@ def generate_learning_content():
         file_paths = data.get("file_paths", [])
         actions = data.get("actions", [])
         project_name = data.get("project_name", "Untitled Project")
-	question_count = int(data.get("question_count", 5))
+        question_count = int(data.get("question_count", 5))
         difficulty = data.get("difficulty", "medium")
 
         text = extract_text_from_supabase_paths(file_paths)
