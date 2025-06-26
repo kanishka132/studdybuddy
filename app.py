@@ -33,7 +33,12 @@ app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 # === Helper Functions ===
 def extract_text_from_pdf(file_path):
     doc = fitz.open(file_path)
-    text = "".join([page.get_text() for page in doc])
+    text = ""
+    for page in doc:
+        page_text = page.get_text("text")
+        text += page_text
+        print(f"📄 Page extracted: {len(page_text)} chars")
+
     doc.close()
     return text
 
@@ -67,11 +72,13 @@ def extract_text_from_supabase_paths(file_paths):
             tmp.write(file_bytes)
             tmp.flush()
             extracted = extract_text(tmp.name)
+            print(f"✅ Extracted from {path}:\n", extracted[:10])  # show first 1000 characters
+
             all_text += extracted + "\n"
     return re.sub(r'\s+', ' ', all_text).strip()
 
 def generate_ai_response(task, text, count=5, difficulty="medium"):
-    if task == "summarize":
+    if task == "summary":
         prompt = f"Please summarize the following content clearly and concisely:\n{text}"
     elif task == "quiz":
         prompt = f"""
@@ -97,6 +104,7 @@ def generate_ai_response(task, text, count=5, difficulty="medium"):
         return None
 
     response = model.generate_content([prompt])
+    print("🧠 Gemini raw response:", response.text)
     return response.text
 
 # === Routes ===
@@ -112,14 +120,24 @@ def generate_learning_content():
 
         text = extract_text_from_supabase_paths(file_paths)
 
+        if not text.strip():
+            print("⚠️ Extracted text is empty. Skipping AI generation.")
+            return jsonify({
+                "success": True,
+                "project_name": project_name,
+                "results": {}
+            })
+
+
         results = {}
-        if "summarize" in actions:
-            results["summary"] = generate_ai_response("summarize", text)
+        if "summary" in actions:
+            results["summary"] = generate_ai_response("summary", text)
         if "quiz" in actions:
             results["quiz"] = generate_ai_response("quiz", text, count=question_count, difficulty=difficulty)
         if "flashcards" in actions:
             results["flashcards"] = generate_ai_response("flashcards", text)
 
+        print("text:", text[:100])
         print("results: ",results)
 
         return jsonify({
