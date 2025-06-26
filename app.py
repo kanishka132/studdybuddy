@@ -120,7 +120,7 @@ def generate_learning_content():
         if "flashcards" in actions:
             results["flashcards"] = generate_ai_response("flashcards", text)
 
-        print(results)
+        print("results: ",results)
 
         return jsonify({
             "success": True,
